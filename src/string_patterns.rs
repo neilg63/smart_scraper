@@ -11,6 +11,8 @@ pub trait PatternMatch {
   fn pattern_replace(&self, pattern: &str, replacement: &str, case_insensitive: bool) -> Self where Self:Sized;
 
   fn pattern_replace_opt(&self, pattern: &str, replacement: &str,case_insensitive: bool) -> Option<Self> where Self:Sized;
+
+  fn strip_non_chars(&self) -> Self where Self:Sized;
 }
 
 pub trait ExtractSegments {
@@ -18,6 +20,8 @@ pub trait ExtractSegments {
   fn extract_segments(&self, separator: &str) -> Vec<Self> where Self:Sized;
 
   fn extract_head(&self, separator: &str) -> Self  where Self:Sized;
+
+  fn extract_segment(&self, separator: &str, index: i32) -> Option<Self>  where Self:Sized;
 
   fn extract_tail(&self, separator: &str) -> Self where Self:Sized;
 
@@ -94,6 +98,10 @@ impl PatternMatch for String {
   /// 
   fn pattern_replace(&self, pattern: &str, replacement: &str, case_insensitive: bool) -> String {
     self.pattern_replace_opt(pattern, replacement, case_insensitive).unwrap_or(self.to_owned())
+  }
+
+  fn strip_non_chars(&self) -> String {
+    self.chars().into_iter().filter(|c| c.is_alphanumeric()).collect::<String>()
   }
 
 }
@@ -175,9 +183,8 @@ impl ExtractSegments for String {
   }
 
   fn extract_head(&self, separator: &str) -> String {
-    let parts = self.extract_segments(separator);
-    if parts.len() > 0 {
-      parts.get(0).unwrap_or(self).to_owned()
+    if let Some((head, _tail)) = self.split_once(separator) {
+      head.to_string()
     } else {
       self.to_owned()
     }
@@ -192,24 +199,25 @@ impl ExtractSegments for String {
     }
   }
 
-  fn extract_head_pair(&self, separator: &str) -> (String, String) {
+  fn extract_segment(&self, separator: &str, index: i32) -> Option<String> {
     let parts = self.extract_segments(separator);
-    let mut tail = "".to_string();
-    let num_parts = parts.len();
-    if num_parts > 0 {
-      let head = parts.get(0).unwrap_or(self).to_owned();
-      if num_parts > 1 {
-        let mut tail_parts: Vec<&str> = vec![];
-        for i in 1..num_parts {
-          if let Some(part) = parts.get(i) {
-            tail_parts.push(part);
-          }
-        }
-        tail = tail_parts.join(separator);
+    let target_index = if index >= 0 { index as usize } else { (0 - index) as usize };
+    if target_index < parts.len() {
+      if let Some(segment) = parts.get(target_index) {
+        Some(segment.to_owned())
+      } else {
+        None
       }
-      (head, tail)
     } else {
-      (self.to_owned(), tail)
+      None
+    }
+  }
+
+  fn extract_head_pair(&self, separator: &str) -> (String, String) {
+    if let Some((head, tail)) = self.split_once(separator) {
+      (head.to_string(), tail.to_string())
+    } else {
+      ("".to_owned(), self.to_owned())
     }
   }
 
