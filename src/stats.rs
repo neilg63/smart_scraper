@@ -6,7 +6,7 @@ use select::node::Node;
 use crate::string_patterns::*;
 
 const MIN_MEANINFUL_TEXT_LENGTH: usize = 256;
-const IGNORE_TAGS_FOR_CONTENT: [&'static str; 12] = ["script", "style", "object", "li", "a", "p", "span", "td", "th", "tr", "tbody", "thead"];
+const IGNORE_TAGS_FOR_CONTENT: [&'static str; 19] = ["script", "style", "object", "li", "a", "p", "span", "td", "th", "tr", "tbody", "thead", "br", "map", "img", "audio", "video", "code", "link"];
 // const IGNORE_TAGS: [&'static str; 2] = ["script", "style"];
 const MAX_SCAN_DEPTH: usize = 9;
 
