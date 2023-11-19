@@ -133,6 +133,8 @@ pub struct PageElement {
     pub id: Option<String>,
     #[serde(rename = "textLen")]
     pub text_len: usize,
+    #[serde(rename = "linkTextLen")]
+    pub link_text_len: usize,
     #[serde(rename = "listLinks")]
     pub list_links: usize,
     #[serde(rename = "numLinks")]
@@ -147,8 +149,10 @@ pub struct PageElement {
 impl  PageElement {
     pub fn new(item: &Node, depth: usize) -> PageElement {
         let list_links = item.find(Name("li").descendant(Name("a"))).collect::<Vec<_>>().len();
-
-        let num_links = item.find(Name("a")).collect::<Vec<_>>().len();
+        let link_elems = item.find(Name("a")).collect::<Vec<_>>();
+        let num_links = link_elems.len();
+        let link_text_len = link_elems.into_iter().map(|el| el.text().len()).fold(0, |a,b| a + b);
+        
         let num_paras = item.find(Name("p")).collect::<Vec<_>>().len();
         let num_headings = item.find(Name("h1").or(Name("h2")).or(Name("h3")).or(Name("h4")).or(Name("h5")).or(Name("h6"))).collect::<Vec<_>>().len();
         
@@ -171,6 +175,7 @@ impl  PageElement {
             class_names,
             id: id_opt,
             text_len: *text_len,
+            link_text_len,
             list_links,
             num_links,
             num_paras,
