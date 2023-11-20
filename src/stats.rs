@@ -5,7 +5,9 @@ use select::predicate::{Attr, Class, Name, Predicate};
 use select::node::Node;
 use crate::string_patterns::*;
 
-const MIN_MEANINFUL_TEXT_LENGTH: usize = 256;
+const MIN_MEANINFUL_TEXT_LENGTH: usize = 128;
+const MIN_MEANINFUL_TEXT_RATIO: f64 = 0.02;
+const MIN_MAIN_TEXT_RATIO: f64 = 0.75;
 const IGNORE_TAGS_FOR_CONTENT: [&'static str; 19] = ["script", "style", "object", "li", "a", "p", "span", "td", "th", "tr", "tbody", "thead", "br", "map", "img", "audio", "video", "code", "link"];
 // const IGNORE_TAGS: [&'static str; 2] = ["script", "style"];
 const MAX_SCAN_DEPTH: usize = 9;
@@ -189,7 +191,11 @@ impl  PageElement {
     }
 
     pub fn has_meaningful_text(&self) -> bool {
-        self.text_len > MIN_MEANINFUL_TEXT_LENGTH && self.fraction > 0.25f64
+        self.text_len > MIN_MEANINFUL_TEXT_LENGTH && self.fraction > MIN_MEANINFUL_TEXT_RATIO && self.plain_text_ratio() > 0.5
+    }
+
+    pub fn is_main_text_element(&self) -> bool {
+      self.text_len >= MIN_MEANINFUL_TEXT_LENGTH && self.fraction > MIN_MAIN_TEXT_RATIO
     }
 
     pub fn set_fraction(&mut self, total_text_len: usize) {
@@ -198,6 +204,10 @@ impl  PageElement {
 
     pub fn weighted_num_links(&self) -> usize {
         self.list_links * 3 + self.num_links + ((self.num_links * 200) as f64 / self.text_len as f64) as usize
+    }
+
+    pub fn plain_text_ratio(&self) -> f64 {
+      1f64 - (self.link_text_len as f64 / self.text_len as f64)
     }
 
     pub fn selector(&self) -> String {
@@ -357,12 +367,29 @@ impl PageStats {
 
     pub fn best_content_match(&self) -> Option<PageElement> {
         let mut text_elements = self.elements.clone().into_iter()
-            .filter(|ns| ns.text_len >= 100 && ns.fraction > 0.75)
+            .filter(|ns| ns.is_main_text_element())
             .collect::<Vec<PageElement>>();
         if text_elements.len() > 0 {
             text_elements.sort_by(|a, b| a.text_len.cmp(&b.text_len));
             if let Some(elem) = text_elements.first() {
+              if elem.has_meaningful_text() {
                 Some(elem.clone())
+              } else {
+                let mut text_elements = self.elements.clone().into_iter()
+                    .filter(|ns| ns.has_meaningful_text())
+                    .collect::<Vec<PageElement>>();
+                  println!("{:?}", text_elements);
+                if text_elements.len() > 0 {
+                  text_elements.sort_by(|a, b| b.text_len.cmp(&a.text_len));
+                  if let Some(elem) = text_elements.first() {
+                    Some(elem.clone())
+                  } else {
+                    None
+                  }
+                } else {
+                  None
+                }
+              }
             } else {
                 None
             }
