@@ -53,9 +53,9 @@ impl FlatPage {
     }
   }
 
-  pub fn is_empty(&self) -> bool {
+/*   pub fn is_empty(&self) -> bool {
     self.content.trim().len() < 1
-  }
+  } */
 
   pub fn retrieved_age(&self) -> i64 {
     let current_ts = get_timestamp();

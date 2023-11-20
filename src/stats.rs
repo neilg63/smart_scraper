@@ -20,7 +20,6 @@ pub fn extract_element_attr(item: &Node, attr_name: &str) -> Option<String> {
   }
 }
 
-
 pub fn extract_href_from_node(item: &Node) -> Option<String> {
   extract_element_attr(item, "href")
 }
@@ -122,6 +121,14 @@ pub fn extract_base_uri(uri: &str) -> String {
     }
   }
   base_uri
+}
+
+pub fn concat_full_uri(uri: &str, base_uri: &str) -> String {
+  if uri.starts_with("http://") || uri.starts_with("https://") {
+    uri.to_owned()
+  } else {
+    [base_uri, uri].concat()
+  }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -313,7 +320,7 @@ impl PageStats {
         }
     }
 
-    pub fn empty() -> PageStats {
+/*     pub fn empty() -> PageStats {
         PageStats {
             uri: "".to_owned(),
             text_len: 0,
@@ -326,7 +333,7 @@ impl PageStats {
             num_links: 0,
             num_domain_links: 0,
         }
-    }
+    } */
 
     pub fn to_overview(&self) -> PageOverview {
         PageOverview {
