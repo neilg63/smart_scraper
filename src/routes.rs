@@ -31,6 +31,8 @@ pub struct PostParams {
     related: Option<bool>,
 }
 
+const RELATED_SCAN_LIMIT: usize = 64;
+
 pub async fn handler_404() -> impl IntoResponse {
     (StatusCode::NOT_FOUND, "nothing to see here")
 }
@@ -67,10 +69,14 @@ pub async fn page_data_response_post(params: extract::Json<PostParams>) -> impl 
         let mut page_data_response = fetch_page_data(&uri, show_mode, strip_extra, target, show_raw).await;
         if fetch_related {
             let show_mode = ShowMode::new(false, false);
+            let mut counter: usize = 0;
             for dl in page_data_response.domain_links() {
-                let new_uri = concat_full_uri(&dl, &base_uri);
-                let result_set = fetch_page_data(&new_uri, show_mode, strip_extra, None, false).await;
-                page_data_response.add_related(result_set);
+                if counter < RELATED_SCAN_LIMIT {
+                  let new_uri = concat_full_uri(&dl, &base_uri);
+                  let result_set = fetch_page_data(&new_uri, show_mode, strip_extra, None, false).await;
+                  page_data_response.add_related(result_set);
+                  counter += 1;
+                }
             }
         }
         response = json!(page_data_response);

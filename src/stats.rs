@@ -117,7 +117,7 @@ pub fn extract_base_uri(uri: &str) -> String {
   let mut base_uri = uri.to_owned().clone();
   if let Some((head, tail)) = uri.split_once("://") {
     if let Some((domain, _end)) = tail.split_once("/") {
-      base_uri = vec![head, domain].concat();
+      base_uri = vec![head,"://", domain].concat();
     }
   }
   base_uri
@@ -274,7 +274,7 @@ pub enum PageOverviewResult {
 }
 
 impl PageStats {
-    pub fn new(doc: &Document, uri: &str) -> PageStats {
+    pub fn new(doc: &Document, uri: &str, fetch_related_links: bool) -> PageStats {
         let mut elements: Vec<PageElement> = vec![];
         let base_uri = extract_base_uri(uri);
         let title: Option<String> = extract_title_from_doc(doc);
@@ -291,16 +291,18 @@ impl PageStats {
         for element in elements.iter_mut() {
             element.set_fraction(text_len);
         }
-        for elem in doc.find(Name("a")).into_iter() {
-            if let Some(href) = extract_href_from_node(&elem) {
-              num_links += 1;
-              if is_local_uri(&href, &base_uri) {
-                if !domain_links.contains(&href) {
-                  domain_links.push(href);
-                  num_domain_links += 1;
+        if fetch_related_links {
+            for elem in doc.find(Name("a")).into_iter() {
+              if let Some(href) = extract_href_from_node(&elem) {
+                num_links += 1;
+                if is_local_uri(&href, &base_uri) && uri.starts_with('#') == false && uri.len() > 1 {
+                  if !domain_links.contains(&href) {
+                    domain_links.push(href);
+                    num_domain_links += 1;
+                  }
                 }
               }
-            }
+          }
         }
         for element in elements.iter_mut() {
             element.set_fraction(text_len);
@@ -385,7 +387,6 @@ impl PageStats {
                 let mut text_elements = self.elements.clone().into_iter()
                     .filter(|ns| ns.has_meaningful_text())
                     .collect::<Vec<PageElement>>();
-                  println!("{:?}", text_elements);
                 if text_elements.len() > 0 {
                   text_elements.sort_by(|a, b| b.text_len.cmp(&a.text_len));
                   if let Some(elem) = text_elements.first() {

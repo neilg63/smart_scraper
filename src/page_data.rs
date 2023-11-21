@@ -270,7 +270,7 @@ pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, targe
       let p_stats = if show_elements || !has_target {
           let ref_html = if has_target { stripped_html.as_str() } else { compact_html.as_str() };
           let doc = Document::from(ref_html);
-          let ps = PageStats::new(&doc, &uri);
+          let ps = PageStats::new(&doc, &uri, show_links);
           Some(ps)
       } else {
           None
