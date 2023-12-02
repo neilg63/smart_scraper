@@ -6,12 +6,13 @@ mod cache;
 mod stats;
 mod page_data;
 mod routes;
+mod params;
 
 use axum::Router;
 use std::net::SocketAddr;
 use std::time::Duration;
 use axum::{
-    http::{header, HeaderValue, StatusCode},
+    http::{header, HeaderValue},
     routing::{get, post},
 };
 use tower_http::{

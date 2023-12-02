@@ -225,10 +225,10 @@ pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, targe
       let mut best_text = "".to_string();
       // println!("start post processing");
       if let Some(tg) = target {
-          best_text = extract_best_html(tg.as_str(), &html_obj);
-          let inner_html_obj = Html::parse_fragment(&best_text);
-          compact_text_len = extract_inner_text_length(&inner_html_obj.root_element());
-          stripped_len = compact_text_len;
+        best_text = extract_best_html(tg.as_str(), &html_obj);
+        let inner_html_obj = Html::parse_fragment(&best_text);
+        compact_text_len = extract_inner_text_length(&inner_html_obj.root_element());
+        stripped_len = compact_text_len;
       }
       
       if let Ok(sel) = Selector::parse("script,style,link") {
@@ -239,21 +239,21 @@ pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, targe
           stripped_html = html_obj.html();
           stripped_len = stripped_html.len();
           if !has_target && strip_extra {
-              if let Ok(sel) = Selector::parse("img,video,audio,object,figure,iframe") {
-                  let ids = html_obj.select(&sel).into_iter().map(|el| el.id()).collect::<Vec<_>>();
-                  for id in ids {
-                      html_obj.remove_from_parent(&id);
+            if let Ok(sel) = Selector::parse("img,video,audio,object,figure,iframe") {
+              let ids = html_obj.select(&sel).into_iter().map(|el| el.id()).collect::<Vec<_>>();
+              for id in ids {
+                  html_obj.remove_from_parent(&id);
+              }
+            }
+            // remove empty tags
+            if let Ok(sel) = Selector::parse("div,span,a") {
+              for elem in html_obj.clone().select(&sel) {
+                  let inner_text_len = extract_inner_text_length(&elem);
+                  if inner_text_len < 1 {
+                      html_obj.remove_from_parent(&elem.id());
                   }
               }
-              if let Ok(sel) = Selector::parse("div,span,a") {
-                  for elem in html_obj.clone().select(&sel) {
-                      let inner_text_len = extract_inner_text_length(&elem);
-                      if inner_text_len < 1 {
-                          html_obj.remove_from_parent(&elem.id());
-                      }
-                  }
-              
-              }
+            }
           }
           if !has_target {
               compact_html = html_obj.html();

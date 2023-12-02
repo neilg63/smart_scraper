@@ -7,29 +7,11 @@ use axum::{
     extract,
     Json,
 };
-use crate::page_data::*;
+use crate::{page_data::*, params::*};
 use crate::stats::{extract_base_uri, concat_full_uri};
 // use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-#[skip_serializing_none]
-#[derive(Deserialize, Clone)]
-pub struct QueryParams {
-    uri: Option<String>,
-    full: Option<u8>,
-    elements: Option<u8>,
-    target: Option<String>,
-}
-#[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PostParams {
-    uri: Option<String>,
-    full: Option<bool>,
-    elements: Option<bool>,
-    links: Option<bool>,
-    target: Option<String>,
-    raw: Option<bool>,
-    related: Option<bool>,
-}
+
 
 const RELATED_SCAN_LIMIT: usize = 64;
 
@@ -64,6 +46,7 @@ pub async fn page_data_response_post(params: extract::Json<PostParams>) -> impl 
         let show_raw = params.raw.unwrap_or(false);
         let fetch_related = params.related.unwrap_or(false);
         let base_uri = extract_base_uri(&uri);
+        
 
         let show_mode = ShowMode::new(show_elements, show_links);
         let mut page_data_response = fetch_page_data(&uri, show_mode, strip_extra, target, show_raw).await;
