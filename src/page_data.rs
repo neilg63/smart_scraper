@@ -209,7 +209,6 @@ impl ShowMode {
 }
 
 pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, target: Option<String>, show_raw: bool) -> PageResultSet {
-  // let uri = "https://en.wikipedia.org/wiki/The_Day_the_Music_Died";
   let has_target = target.is_some();
   let show_elements = mode.show_elements();
   let show_links = mode.show_links();
