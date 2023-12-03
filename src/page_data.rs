@@ -10,8 +10,22 @@ use reqwest::{Client, Error};
 use select::document::Document;
 use serde::{Deserialize, Serialize};
 
+const MAX_PAGE_AGE_MINS_DEFAUTLT: i64 = 1440;
+
 fn get_client() -> Client {
     Client::new()
+}
+
+fn get_max_page_age_minutes() -> i64 {
+  if let Ok(max_mins_str) = dotenv::var("MAX_PAGE_AGE_MINS") {
+    if let Ok(max_age) = max_mins_str.parse::<u16>() {
+      max_age as i64  
+    } else {
+      MAX_PAGE_AGE_MINS_DEFAUTLT
+    }
+  } else {
+    MAX_PAGE_AGE_MINS_DEFAUTLT
+  }
 }
 
 pub fn extract_inner_text_length(elem: &ElementRef) -> usize {
@@ -59,7 +73,8 @@ pub async fn get_page(uri: &str) -> Result<FlatPage, Error> {
 
 pub async fn fetch_page(uri: &str) -> Option<FlatPage> {
   let key = to_page_key(uri);
-  if let Some(pd) = redis_get_page(&key, Duration::hours(3)) {
+  if let Some(mut pd) = redis_get_page(&key, Duration::minutes(get_max_page_age_minutes())) {
+      pd.set_cached();
       Some(pd)
   } else {
       if let Ok(pd ) = get_page(&uri).await {
