@@ -222,6 +222,8 @@ pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, targe
           (r#"<\!--.*?-->"#, ""), // comment tags
           (r#"\s+style="[^"]*?""#, ""), // inline styles (often added programmatically)
           (r#"\s+style='[^']*?'"#, ""), // inline styles alternative with single quotes (less common)
+          (r#"\s+data-\w+="[^"]*?""#, ""), // remove data-prefixed attributes that may be used client-side effects
+          (r#"\s+data-\w+='[^']*?'"#, ""), // less common variant of above
           // (r#">\s*class=[a-z0-9_-]+[^\w]*?<"#, "><"),
       ];
       let html = html_raw.pattern_replace_pairs(&repl_pairs);
@@ -245,7 +247,7 @@ pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, targe
         stripped_len = compact_text_len;
       }
       
-      if let Ok(sel) = Selector::parse("script,style,link") {
+      if let Ok(sel) = Selector::parse("script,style,link,noscript") {
           let ids = html_obj.select(&sel).into_iter().map(|el| el.id()).collect::<Vec<_>>();
           for id in ids {
               html_obj.remove_from_parent(&id);
