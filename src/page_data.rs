@@ -222,8 +222,8 @@ pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, targe
           (r#"<\!--.*?-->"#, ""), // comment tags
           (r#"\s+style="[^"]*?""#, ""), // inline styles (often added programmatically)
           (r#"\s+style='[^']*?'"#, ""), // inline styles alternative with single quotes (less common)
-          (r#"\s+data-\w+="[^"]*?""#, ""), // remove data-prefixed attributes that may be used client-side effects
-          (r#"\s+data-\w+='[^']*?'"#, ""), // less common variant of above
+          (r#"\s+data(-\w+)+=("[^"]*?"|'[^']*?')"#, ""), // remove data-prefixed attributes that may be used client-side effects
+          (r#"\s+data(-\w+)+(\s+|>)"#, "$1"), // remove data-prefixed attributes that may be used client-side effects
           // (r#">\s*class=[a-z0-9_-]+[^\w]*?<"#, "><"),
       ];
       let html = html_raw.pattern_replace_pairs(&repl_pairs);
