@@ -253,7 +253,7 @@ pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, targe
           stripped_html = html_obj.html();
           stripped_len = stripped_html.len();
           if !has_target && strip_extra {
-            if let Ok(sel) = Selector::parse("img,video,audio,object,figure,iframe") {
+            if let Ok(sel) = Selector::parse("img,video,audio,object,figure,iframe,svg,path") {
               let ids = html_obj.select(&sel).into_iter().map(|el| el.id()).collect::<Vec<_>>();
               for id in ids {
                   html_obj.remove_from_parent(&id);
