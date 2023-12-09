@@ -1,4 +1,5 @@
 use chrono::Duration;
+use core::time::Duration as StdDuration;
 use scraper::{Html, Selector, ElementRef};
 use html5ever::tree_builder::TreeSink;
 use serde_with::skip_serializing_none;
@@ -10,10 +11,11 @@ use base64::{Engine as _, engine::general_purpose};
 use reqwest::{Client, Error};
 use select::document::Document;
 use serde::{Deserialize, Serialize};
-use crate::string_patterns::*;
+
 
 const MAX_PAGE_AGE_MINS_DEFAUTLT: i64 = 1440;
 const HEADLESS_BROWSER_APP_EXEC_PATH_DEFAUTLT: &'static str = "/var/www/mini-puppeteer/scraper";
+const MAX_TIMEOUT_SECS: u64 = 15;
 
 fn get_client() -> Client {
     Client::new()
@@ -71,7 +73,7 @@ pub fn to_page_key(uri: &str) -> String {
 
 pub async fn get_page(uri: &str) -> Result<FlatPage, Error> {
   let client = get_client();
-  let result = client.get(uri).send().await;
+  let result = client.get(uri).timeout(StdDuration::from_secs(MAX_TIMEOUT_SECS)).send().await;
   match result {
      Ok(req) => if let Ok(html_raw) = req.text().await {
           Ok(FlatPage::new(uri, &html_raw, false))
@@ -104,7 +106,8 @@ pub struct PageResultSet {
     content: Option<PageInfo>,
     raw: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    related: Vec<PageResultSet>
+    related: Vec<PageResultSet>,
+    valid: bool
 }
 
 impl PageResultSet {
@@ -113,7 +116,8 @@ impl PageResultSet {
             stats,
             content,
             raw,
-            related: vec![]
+            related: vec![],
+            valid: true
         }
     }
 
@@ -122,7 +126,8 @@ impl PageResultSet {
             stats: None,
             content: None,
             raw: None,
-            related: vec![]
+            related: vec![],
+            valid: false
         }
     }
 
