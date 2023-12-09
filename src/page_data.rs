@@ -74,7 +74,7 @@ pub async fn get_page(uri: &str) -> Result<FlatPage, Error> {
   let result = client.get(uri).send().await;
   match result {
      Ok(req) => if let Ok(html_raw) = req.text().await {
-          Ok(FlatPage::new(uri, &html_raw))
+          Ok(FlatPage::new(uri, &html_raw, false))
       } else {
           Ok(FlatPage::empty())
       },
@@ -89,7 +89,7 @@ pub async fn fetch_page(uri: &str) -> Option<FlatPage> {
       Some(pd)
   } else {
       if let Ok(pd ) = get_page(&uri).await {
-          redis_set_page(&key, &pd.uri, &pd.content);
+          redis_set_page(&key, &pd.uri, &pd.content, false);
           Some(pd)
       } else {
           None

@@ -29,15 +29,16 @@ pub fn grab_content_from_headless_browser(uri: &str, secs: u16) -> Option<String
 pub fn capture_from_headless_browser(uri: &str, secs: u16) -> Option<FlatPage> {
   let key = to_page_key(uri);
   if let Some(mut pd) = redis_get_page(&key, Duration::minutes(get_max_page_age_minutes())) {
-      pd.set_cached();
-      Some(pd)
+      if pd.full_browser {
+        pd.set_cached();
+        return Some(pd);
+      }
+  }
+  if let Some(html_raw) = grab_content_from_headless_browser(uri, secs) {
+    let pd = FlatPage::new(uri, &html_raw, true);
+    redis_set_page(&key, &pd.uri, &pd.content, true);
+    Some(pd)
   } else {
-    if let Some(html_raw) = grab_content_from_headless_browser(uri, secs) {
-      let pd = FlatPage::new(uri, &html_raw);
-      redis_set_page(&key, &pd.uri, &pd.content);
-      Some(pd)
-    } else {
-      None
-    }
+    None
   }
 }

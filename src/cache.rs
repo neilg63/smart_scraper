@@ -32,15 +32,17 @@ pub struct FlatPage {
   pub content: String,
   pub ts: i64,
   pub cached: bool,
+  pub full_browser: bool,
 }
 
 impl FlatPage {
-  pub fn new(uri: &str, content: &str) -> Self {
+  pub fn new(uri: &str, content: &str, full_browser: bool) -> Self {
     FlatPage { 
       uri: uri.to_string(),
       content: content.to_string(),
       ts: get_timestamp(),
-      cached: false
+      cached: false,
+      full_browser
     }
   }
 
@@ -49,7 +51,8 @@ impl FlatPage {
       uri: "".to_string(),
       content: "".to_string(),
       ts: 0,
-      cached: false
+      cached: false,
+      full_browser: false
     }
   }
 
@@ -68,9 +71,9 @@ impl FlatPage {
 
 }
 
-pub fn  redis_set_page(key: &str, uri: &str, content: &str) -> Option<FlatPage> {
+pub fn  redis_set_page(key: &str, uri: &str, content: &str, full_browser: bool) -> Option<FlatPage> {
   if let Ok(mut connection) =  redis_client() {
-      let stored_object = FlatPage::new(uri, content);
+      let stored_object = FlatPage::new(uri, content, full_browser);
       match serde_json::to_string(&stored_object) {
         Ok(value) => match connection.set::<String,String,String>(key.to_string(), value) {
           Ok(_result) => Some(stored_object),
