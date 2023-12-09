@@ -11,7 +11,6 @@ use crate::stats::{extract_base_uri, concat_full_uri};
 // use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 
-
 const RELATED_SCAN_LIMIT: usize = 64;
 
 pub async fn handler_404() -> impl IntoResponse {
@@ -105,6 +104,25 @@ pub async fn fetch_page_from_browser(params: extract::Json<PostParams>) -> impl 
     let output = capture_from_headless_browser(&uri, 5);
     if let Some(pd) = output {
       response = json!({ "valid": true,"content": pd.content, "ts": pd.ts, "cached": pd.cached, "uri": pd.uri });
+    }
+  }
+  (StatusCode::OK, Json(response))
+}
+
+pub async fn fetch_page_content_from_browser(params: extract::Json<PostParams>) -> impl IntoResponse {
+  let mut response = json!({
+      "valid": false,
+  });
+  if let Some(uri) = params.uri.clone() {
+    let output = capture_from_headless_browser(&uri, 5);
+    if let Some(pd) = output {
+      let strip_extra = params.full.unwrap_or(false) == false;
+      let show_elements = params.elements.unwrap_or(false);
+      let target = params.target.clone();
+      let show_mode = ShowMode::new(show_elements, true);
+      let show_raw = params.raw.unwrap_or(false);
+      let result = build_page_content_data(&uri, &pd.content, show_mode, strip_extra, target, show_raw, pd.cached);
+      response = json!(result);
     }
   }
   (StatusCode::OK, Json(response))

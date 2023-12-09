@@ -54,6 +54,7 @@ async fn main() {
         .route("/page-stats", get(page_data_response).post(page_data_response_post))
         .route("/get-page", post(page_content_response_post))
         .route("/get-links", post(page_links_response_post))
+        .route("/get-page-from-browser", post(fetch_page_content_from_browser))
         .route("/from-browser", post(fetch_page_from_browser))
         .layer(CorsLayer::permissive())
         .layer(TimeoutLayer::new(Duration::from_secs(max_timeout_secs)))

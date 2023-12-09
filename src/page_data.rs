@@ -238,107 +238,98 @@ impl LinkItem {
     }
 }
 
-pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, target: Option<String>, show_raw: bool) -> PageResultSet {
+pub fn build_page_content_data(uri: &str, html_raw: &str, mode: ShowMode, strip_extra: bool, target: Option<String>, show_raw: bool, cached: bool) -> PageResultSet {
   let has_target = target.is_some();
   let show_elements = mode.show_elements();
   let show_links = mode.show_links();
-  //let mut node_items: Vec<PageElement> = vec![];
-  if let Some(pd) = fetch_page(uri).await {
-      let html_raw = pd.content;
-      let html = clean_raw_html(&html_raw);
-      
 
-      let mut html_obj = Html::parse_fragment(html.as_str());
-      /*  let mut fragment = Html::parse_fragment(&html);
-      let selector = Selector::parse("img,style,script").unwrap();
-      let elemments = fragment.select(&selector).into_iter().map(|el| el.as()).collect::<Vec<Node>>();
-      println!("{}", fragment.html());; */
-      let mut stripped_len: usize = 0;
-      let mut stripped_html = "".to_string();
-      let mut compact_html = "".to_string();
-      let mut compact_text_len: usize = 0;
-      let mut best_text = "".to_string();
-      // println!("start post processing");
-      if let Some(tg) = target {
-        best_text = extract_best_html(tg.as_str(), &html_obj);
-        let inner_html_obj = Html::parse_fragment(&best_text);
-        compact_text_len = extract_inner_text_length(&inner_html_obj.root_element());
-        stripped_len = compact_text_len;
+  let html = clean_raw_html(html_raw);
+
+  let mut html_obj = Html::parse_fragment(html.as_str());
+  /*  let mut fragment = Html::parse_fragment(&html);
+  let selector = Selector::parse("img,style,script").unwrap();
+  let elemments = fragment.select(&selector).into_iter().map(|el| el.as()).collect::<Vec<Node>>();
+  println!("{}", fragment.html());; */
+  let mut stripped_len: usize = 0;
+  let mut stripped_html = "".to_string();
+  let mut compact_html = "".to_string();
+  let mut compact_text_len: usize = 0;
+  let mut best_text = "".to_string();
+  // println!("start post processing");
+  if let Some(tg) = target {
+  best_text = extract_best_html(tg.as_str(), &html_obj);
+  let inner_html_obj = Html::parse_fragment(&best_text);
+  compact_text_len = extract_inner_text_length(&inner_html_obj.root_element());
+  stripped_len = compact_text_len;
+  }
+  
+  if let Ok(sel) = Selector::parse("script,style,link,noscript") {
+      let ids = html_obj.select(&sel).into_iter().map(|el| el.id()).collect::<Vec<_>>();
+      for id in ids {
+          html_obj.remove_from_parent(&id);
       }
-      
-      if let Ok(sel) = Selector::parse("script,style,link,noscript") {
+      stripped_html = html_obj.html();
+      stripped_len = stripped_html.len();
+      if !has_target && strip_extra {
+      if let Ok(sel) = Selector::parse("img,video,audio,object,figure,iframe,svg,path") {
           let ids = html_obj.select(&sel).into_iter().map(|el| el.id()).collect::<Vec<_>>();
           for id in ids {
               html_obj.remove_from_parent(&id);
           }
-          stripped_html = html_obj.html();
-          stripped_len = stripped_html.len();
-          if !has_target && strip_extra {
-            if let Ok(sel) = Selector::parse("img,video,audio,object,figure,iframe,svg,path") {
-              let ids = html_obj.select(&sel).into_iter().map(|el| el.id()).collect::<Vec<_>>();
-              for id in ids {
-                  html_obj.remove_from_parent(&id);
+      }
+      // remove empty tags
+      if let Ok(sel) = Selector::parse("div,span,a") {
+          for elem in html_obj.clone().select(&sel) {
+              let inner_text_len = extract_inner_text_length(&elem);
+              if inner_text_len < 1 {
+                  html_obj.remove_from_parent(&elem.id());
               }
-            }
-            // remove empty tags
-            if let Ok(sel) = Selector::parse("div,span,a") {
-              for elem in html_obj.clone().select(&sel) {
-                  let inner_text_len = extract_inner_text_length(&elem);
-                  if inner_text_len < 1 {
-                      html_obj.remove_from_parent(&elem.id());
-                  }
-              }
-            }
-          }
-          if !has_target {
-              compact_html = html_obj.html();
-              compact_text_len = extract_inner_text_length(&html_obj.root_element());
           }
       }
-      
-      let source_len =  html.len();
-      let compact_len = if has_target {
-          best_text.len()
-      } else {
-          compact_html.len()
-      };
-      let p_stats = if show_elements || !has_target {
-          let ref_html = if has_target { stripped_html.as_str() } else { compact_html.as_str() };
-          let doc = Document::from(ref_html);
-          let ps = PageStats::new(&doc, &uri, show_links);
-          Some(ps)
-      } else {
-          None
-      };
-    /*   println!("{}", json!(ps.to_overview()));
-      println!("{}", json!(ps.top_text_elements()));
-      println!("{}", json!(ps.top_menu_elements())); */
-      //
-
-              
-      // println!("\n\n{}\n", compact_html);
-      /* 
-      if let Ok(sel) = Selector::parse(".elementor-text-editor") {
-          println!("\nhtml obj:\n{:?}\n", html_obj.select(&sel).into_iter().collect::<Vec<ElementRef>>());
-      } */
-      //let top_menu_links = ps.top_menu_elements();
+      }
       if !has_target {
-          if let Some(ps) = p_stats.clone() {
-              if let Some(best_text_element) = ps.best_content_match() {
-                  let str_sel = best_text_element.selector();
-                  best_text = extract_best_html(&str_sel, &html_obj);
-              }
+          compact_html = html_obj.html();
+          compact_text_len = extract_inner_text_length(&html_obj.root_element());
+      }
+  }
+  
+  let source_len =  html.len();
+  let compact_len = if has_target {
+      best_text.len()
+  } else {
+      compact_html.len()
+  };
+  let p_stats = if show_elements || !has_target {
+      let ref_html = if has_target { stripped_html.as_str() } else { compact_html.as_str() };
+      let doc = Document::from(ref_html);
+      let ps = PageStats::new(&doc, &uri, show_links);
+      Some(ps)
+  } else {
+      None
+  };
+  if !has_target {
+      if let Some(ps) = p_stats.clone() {
+          if let Some(best_text_element) = ps.best_content_match() {
+              let str_sel = best_text_element.selector();
+              best_text = extract_best_html(&str_sel, &html_obj);
           }
       }
-      let compact_text_len = best_text.len();
-      let pi = PageInfo::new(source_len, stripped_len, compact_len, pd.cached, &best_text, compact_text_len);
-      let raw = if show_raw { Some(html) } else { None };
-      let overview = if let Some(ps) = p_stats.clone() {
-          Some(ps.to_result(show_links))
-      } else {
-          None
-      };
-      PageResultSet::new(overview, Some(pi), raw)
+  }
+  let compact_text_len = best_text.len();
+  let pi = PageInfo::new(source_len, stripped_len, compact_len, cached, &best_text, compact_text_len);
+  let raw = if show_raw { Some(html) } else { None };
+  let overview = if let Some(ps) = p_stats.clone() {
+      Some(ps.to_result(show_links))
+  } else {
+      None
+  };
+  PageResultSet::new(overview, Some(pi), raw)
+}
+
+pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, target: Option<String>, show_raw: bool) -> PageResultSet {
+  //let mut node_items: Vec<PageElement> = vec![];
+  if let Some(pd) = fetch_page(uri).await {
+    build_page_content_data(uri, &pd.content, mode, strip_extra, target, show_raw, pd.cached)
   } else {
     PageResultSet::empty()
   }
