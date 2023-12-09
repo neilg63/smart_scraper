@@ -7,6 +7,8 @@ mod stats;
 mod page_data;
 mod routes;
 mod params;
+mod cleantext;
+mod browsergrab;
 
 use axum::Router;
 use std::net::SocketAddr;
@@ -50,6 +52,9 @@ async fn main() {
     let app = Router::new()
         // `GET /` goes to `root`
         .route("/page-stats", get(page_data_response).post(page_data_response_post))
+        .route("/get-page", post(page_content_response_post))
+        .route("/get-links", post(page_links_response_post))
+        .route("/from-browser", post(fetch_page_from_browser))
         .layer(CorsLayer::permissive())
         .layer(TimeoutLayer::new(Duration::from_secs(max_timeout_secs)))
         // don't allow request bodies larger than 1024 bytes, returning 413 status code

@@ -3,20 +3,23 @@ use scraper::{Html, Selector, ElementRef};
 use html5ever::tree_builder::TreeSink;
 use serde_with::skip_serializing_none;
 use crate::cache::{FlatPage, redis_get_page, redis_set_page};
+use crate::cleantext::clean_raw_html;
 use crate::string_patterns::*;
 use crate::stats::*;
 use base64::{Engine as _, engine::general_purpose};
 use reqwest::{Client, Error};
 use select::document::Document;
 use serde::{Deserialize, Serialize};
+use crate::string_patterns::*;
 
 const MAX_PAGE_AGE_MINS_DEFAUTLT: i64 = 1440;
+const HEADLESS_BROWSER_APP_EXEC_PATH_DEFAUTLT: &'static str = "/var/www/mini-puppeteer/scraper";
 
 fn get_client() -> Client {
     Client::new()
 }
 
-fn get_max_page_age_minutes() -> i64 {
+pub fn get_max_page_age_minutes() -> i64 {
   if let Ok(max_mins_str) = dotenv::var("MAX_PAGE_AGE_MINS") {
     if let Ok(max_age) = max_mins_str.parse::<u16>() {
       max_age as i64  
@@ -27,6 +30,14 @@ fn get_max_page_age_minutes() -> i64 {
     MAX_PAGE_AGE_MINS_DEFAUTLT
   }
 }
+
+pub fn get_headless_browser_app_exec_path() -> String {
+    if let Ok(app_path) = dotenv::var("HEADLESS_BROWSER_APP_EXEC_PATH") {
+      app_path
+    } else {
+      HEADLESS_BROWSER_APP_EXEC_PATH_DEFAUTLT.to_owned()
+    }
+  }
 
 pub fn extract_inner_text_length(elem: &ElementRef) -> usize {
   let text_lens: Vec<usize> = elem.text().into_iter().map(|el| {
@@ -208,6 +219,25 @@ impl ShowMode {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LinkItem {
+    uri: String,
+    title: String,
+    summary: String,
+    local: bool
+}
+
+impl LinkItem {
+    pub fn new(uri: &str, title: &str, summary: &str, local: bool) -> LinkItem {
+        LinkItem {
+            uri: uri.to_owned(),
+            title: title.to_owned(),
+            summary: summary.to_owned(),
+            local
+        }
+    }
+}
+
 pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, target: Option<String>, show_raw: bool) -> PageResultSet {
   let has_target = target.is_some();
   let show_elements = mode.show_elements();
@@ -215,18 +245,7 @@ pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, targe
   //let mut node_items: Vec<PageElement> = vec![];
   if let Some(pd) = fetch_page(uri).await {
       let html_raw = pd.content;
-      let repl_pairs = [
-          (r#"\s\s+"#, " "), // remove multiple spaces
-          (r#"^\s+"#, ""),// remove all spaces within otherwise empty lines
-          (r#"\n"#, ""), // remove remaining new line breaks
-          (r#"<\!--.*?-->"#, ""), // comment tags
-          (r#"\s+style="[^"]*?""#, ""), // inline styles (often added programmatically)
-          (r#"\s+style='[^']*?'"#, ""), // inline styles alternative with single quotes (less common)
-          (r#"\s+data(-\w+)+=("[^"]*?"|'[^']*?')"#, ""), // remove data-prefixed attributes that may be used client-side effects
-          (r#"\s+data(-\w+)+(\s+|>)"#, "$1"), // remove data-prefixed attributes that may be used client-side effects
-          // (r#">\s*class=[a-z0-9_-]+[^\w]*?<"#, "><"),
-      ];
-      let html = html_raw.pattern_replace_pairs(&repl_pairs);
+      let html = clean_raw_html(&html_raw);
       
 
       let mut html_obj = Html::parse_fragment(html.as_str());
@@ -311,8 +330,7 @@ pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, targe
               }
           }
       }
-      //println!("end post processing");
-      
+      let compact_text_len = best_text.len();
       let pi = PageInfo::new(source_len, stripped_len, compact_len, pd.cached, &best_text, compact_text_len);
       let raw = if show_raw { Some(html) } else { None };
       let overview = if let Some(ps) = p_stats.clone() {
@@ -325,3 +343,40 @@ pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, targe
     PageResultSet::empty()
   }
 }
+
+fn is_javascript_link(title: &str, uri: &str) -> bool {
+    let patterns = [r"\{", r"\}"];
+    let title_suspect = title.to_owned().pattern_match_many(&patterns, true);
+    if !title_suspect {
+        uri.to_owned().pattern_match_many(&patterns, true)
+    } else {
+        title_suspect
+    }
+}
+
+pub async fn fetch_page_links(uri: &str) -> Vec<LinkItem> {
+    let mut links: Vec<LinkItem> = Vec::new();
+    //let mut node_items: Vec<PageElement> = vec![];
+    if let Some(pd) = fetch_page(uri).await {
+        let html_raw = pd.content;
+        let html = clean_raw_html(&html_raw);
+        let base_uri = extract_base_uri(uri);
+        let html_obj = Html::parse_fragment(html.as_str());
+        let a_selection = Selector::parse("a");
+        if let Ok(selector) = a_selection {
+            for row in html_obj.select(&selector).into_iter() {
+                if let Some(href) = row.attr("href") {
+                    let title = row.text().collect::<String>();
+                    let title = title.trim();
+                    if title.len() > 0 && !is_javascript_link(title, href) {
+                        let local =  is_local_uri(href, &base_uri);
+                        if links.iter().any(|lk| lk.uri == href) == false {
+                            links.push(LinkItem::new(href, title, "", local))
+                        }
+                    }
+                }
+            }
+        }
+    } 
+    links
+  }

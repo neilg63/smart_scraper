@@ -5,6 +5,7 @@ use axum::{
     extract,
     Json,
 };
+use crate::browsergrab::capture_from_headless_browser;
 use crate::{page_data::*, params::*};
 use crate::stats::{extract_base_uri, concat_full_uri};
 // use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -63,4 +64,48 @@ pub async fn page_data_response_post(params: extract::Json<PostParams>) -> impl 
         response = json!(page_data_response);
     }
     (StatusCode::OK, Json(response))
+}
+
+
+pub async fn page_content_response_post(params: extract::Json<PostParams>) -> impl IntoResponse {
+  let mut response = json!({
+      "valid": false,
+  });
+  if let Some(uri) = params.uri.clone() {
+      let show_links = params.elements.unwrap_or(true);
+      let target = params.target.clone();
+      
+
+      let show_mode = ShowMode::new(false, show_links);
+      let page_data_response = fetch_page_data(&uri, show_mode, true, target, false).await;
+      
+      response = json!(page_data_response);
+  }
+  (StatusCode::OK, Json(response))
+}
+
+
+pub async fn page_links_response_post(params: extract::Json<PostParams>) -> impl IntoResponse {
+  let mut response = json!({
+      "valid": false,
+  });
+  if let Some(uri) = params.uri.clone() {
+    let links = fetch_page_links(&uri).await;
+    
+    response = json!({ "links": links });
+  }
+  (StatusCode::OK, Json(response))
+}
+
+pub async fn fetch_page_from_browser(params: extract::Json<PostParams>) -> impl IntoResponse {
+  let mut response = json!({
+      "valid": false,
+  });
+  if let Some(uri) = params.uri.clone() {
+    let output = capture_from_headless_browser(&uri, 5);
+    if let Some(pd) = output {
+      response = json!({ "valid": true,"content": pd.content, "ts": pd.ts, "cached": pd.cached, "uri": pd.uri });
+    }
+  }
+  (StatusCode::OK, Json(response))
 }
