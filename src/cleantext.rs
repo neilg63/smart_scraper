@@ -14,3 +14,7 @@ pub fn clean_raw_html(html: &str) -> String {
     ];
     html.to_owned().pattern_replace_pairs(&repl_pairs)
 }
+
+pub fn strip_literal_tags(text: &str) -> String {
+  text.to_owned().pattern_replace(r"</?\w[^>]*?>", "", true).trim().to_owned()
+}

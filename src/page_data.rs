@@ -4,7 +4,7 @@ use scraper::{Html, Selector, ElementRef};
 use html5ever::tree_builder::TreeSink;
 use serde_with::skip_serializing_none;
 use crate::cache::{FlatPage, redis_get_page, redis_set_page};
-use crate::cleantext::clean_raw_html;
+use crate::cleantext::{clean_raw_html, strip_literal_tags};
 use crate::string_patterns::*;
 use crate::stats::*;
 use base64::{Engine as _, engine::general_purpose};
@@ -363,11 +363,11 @@ pub async fn fetch_page_links(uri: &str) -> Vec<LinkItem> {
             for row in html_obj.select(&selector).into_iter() {
                 if let Some(href) = row.attr("href") {
                     let title = row.text().collect::<String>();
-                    let title = title.trim();
-                    if title.len() > 0 && !is_javascript_link(title, href) {
+                    let title = strip_literal_tags(&title);
+                    if title.len() > 0 && !is_javascript_link(&title, href) && uri.starts_with("#") == false {
                         let local =  is_local_uri(href, &base_uri);
                         if links.iter().any(|lk| lk.uri == href) == false {
-                            links.push(LinkItem::new(href, title, "", local))
+                            links.push(LinkItem::new(href, &title, "", local))
                         }
                     }
                 }
