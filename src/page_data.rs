@@ -243,6 +243,24 @@ impl LinkItem {
     }
 }
 
+fn strip_extra_tags(html_obj: &mut Html) {
+  if let Ok(sel) = Selector::parse("img,video,audio,object,figure,iframe,svg,path") {
+    let ids = html_obj.select(&sel).into_iter().map(|el| el.id()).collect::<Vec<_>>();
+    for id in ids {
+        html_obj.remove_from_parent(&id);
+    }
+  }
+  // remove empty tags
+  if let Ok(sel) = Selector::parse("div,span,a") {
+    for elem in html_obj.clone().select(&sel) {
+        let inner_text_len = extract_inner_text_length(&elem);
+        if inner_text_len < 1 {
+            html_obj.remove_from_parent(&elem.id());
+        }
+    }
+  }
+}
+
 pub fn build_page_content_data(uri: &str, html_raw: &str, mode: ShowMode, strip_extra: bool, target: Option<String>, show_raw: bool, cached: bool) -> PageResultSet {
   let has_target = target.is_some();
   let show_elements = mode.show_elements();
@@ -261,12 +279,7 @@ pub fn build_page_content_data(uri: &str, html_raw: &str, mode: ShowMode, strip_
   let mut compact_text_len: usize = 0;
   let mut best_text = "".to_string();
   // println!("start post processing");
-  if let Some(tg) = target {
-  best_text = extract_best_html(tg.as_str(), &html_obj);
-  let inner_html_obj = Html::parse_fragment(&best_text);
-  compact_text_len = extract_inner_text_length(&inner_html_obj.root_element());
-  stripped_len = compact_text_len;
-  }
+
   
   if let Ok(sel) = Selector::parse("script,style,link,noscript") {
       let ids = html_obj.select(&sel).into_iter().map(|el| el.id()).collect::<Vec<_>>();
@@ -275,27 +288,29 @@ pub fn build_page_content_data(uri: &str, html_raw: &str, mode: ShowMode, strip_
       }
       stripped_html = html_obj.html();
       stripped_len = stripped_html.len();
-      if !has_target && strip_extra {
-      if let Ok(sel) = Selector::parse("img,video,audio,object,figure,iframe,svg,path") {
-          let ids = html_obj.select(&sel).into_iter().map(|el| el.id()).collect::<Vec<_>>();
-          for id in ids {
-              html_obj.remove_from_parent(&id);
-          }
-      }
-      // remove empty tags
-      if let Ok(sel) = Selector::parse("div,span,a") {
-          for elem in html_obj.clone().select(&sel) {
-              let inner_text_len = extract_inner_text_length(&elem);
-              if inner_text_len < 1 {
-                  html_obj.remove_from_parent(&elem.id());
-              }
-          }
-      }
+      if strip_extra {
+        strip_extra_tags(&mut html_obj);
       }
       if !has_target {
           compact_html = html_obj.html();
           compact_text_len = extract_inner_text_length(&html_obj.root_element());
       }
+  }
+
+  if let Some(tg) = target {
+    let (header_target, content_target) = tg.extract_head_pair("/");
+    let has_header_target = header_target.len() > 1;
+    
+    best_text = extract_best_html(&content_target, &html_obj);
+    if has_header_target {
+      let header = extract_best_html(&header_target, &html_obj);
+      if header.len() > 1 {
+        best_text = [r#"<div class="content-wrapper">"#, &header, &best_text,"</div>"].concat();
+      }
+    }
+    let inner_html_obj = Html::parse_fragment(&best_text);
+    compact_text_len = extract_inner_text_length(&inner_html_obj.root_element());
+    stripped_len = compact_text_len;
   }
   
   let source_len =  html.len();

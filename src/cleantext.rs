@@ -8,8 +8,8 @@ pub fn clean_raw_html(html: &str) -> String {
         (r#"<\!--.*?-->"#, ""), // comment tags
         (r#"\s+style="[^"]*?""#, ""), // inline styles (often added programmatically)
         (r#"\s+style='[^']*?'"#, ""), // inline styles alternative with single quotes (less common)
-        (r#"\s+data(-\w+)+=("[^"]*?"|'[^']*?')"#, ""), // remove data-prefixed attributes that may be used client-side effects
-        (r#"\s+data(-\w+)+(\s+|>)"#, "$1"), // remove data-prefixed attributes that may be used client-side effects
+    /*     (r#"\s+data(-\w+)+=("[^"]*?"|'[^']*?')"#, ""), // remove data-prefixed attributes that may be used client-side effects
+        (r#"\s+data(-\w+)+(\s+|>)"#, "$1"), // remove data-prefixed attributes that may be used client-side effects */
         // (r#">\s*class=[a-z0-9_-]+[^\w]*?<"#, "><"),
     ];
     html.to_owned().pattern_replace_pairs(&repl_pairs)
