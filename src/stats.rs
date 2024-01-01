@@ -1,9 +1,10 @@
 
 use select::document::Document;
 use serde::{Deserialize, Serialize};
-use select::predicate::{Attr, Class, Name, Predicate};
+use select::predicate::{Attr, Name, Predicate};
 use select::node::Node;
-use crate::string_patterns::{*, self};
+use string_patterns::*;
+use crate::string_utils::*;
 
 const MIN_MEANINFUL_TEXT_LENGTH: usize = 128;
 const MIN_MEANINFUL_TEXT_RATIO: f64 = 0.02;
@@ -109,7 +110,7 @@ pub fn is_local_uri(uri: &str, base_uri: &str) -> bool {
   } else if uri.starts_with("http://") || uri.starts_with("https://") {
     let mut is_local = uri.starts_with(base_uri);
     let parts = if !is_local {
-      base_uri.to_string().extract_segments(".")
+      base_uri.to_string().to_segments(".")
     } else {
       vec![]
     };
@@ -117,7 +118,7 @@ pub fn is_local_uri(uri: &str, base_uri: &str) -> bool {
     
     if num_parts > 1 {
       let last_part = parts.get(num_parts - 1).unwrap();
-      let first_part = parts.get(0).unwrap().to_string().extract_tail("//");
+      let first_part = parts.get(0).unwrap().to_string().to_tail("//");
       let last_is_country_code = last_part.len() == 2;
       // let second_last_part = parts.get(num_parts - 2).unwrap();
       let may_have_subdomains = num_parts > 3 || first_part.as_str() == "www" || (num_parts > 2 && last_is_country_code);
@@ -126,7 +127,7 @@ pub fn is_local_uri(uri: &str, base_uri: &str) -> bool {
       } else {
         "://"
       };
-      let base = base_uri.to_owned().extract_tail(separator);
+      let base = base_uri.to_owned().to_tail(separator);
       let start_pattern = [r"^https?://([a-z0-9_-]+\.)?",&base].concat();
       is_local = uri.to_owned().pattern_match(&start_pattern, true);
     }

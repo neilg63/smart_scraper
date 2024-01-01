@@ -1,4 +1,5 @@
-use crate::string_patterns::*;
+use string_patterns::*;
+use crate::string_utils::*;
 
 pub fn clean_raw_html(html: &str) -> String {
   let repl_pairs = [

@@ -5,7 +5,8 @@ use html5ever::tree_builder::TreeSink;
 use serde_with::skip_serializing_none;
 use crate::cache::{FlatPage, redis_get_page, redis_set_page};
 use crate::cleantext::{clean_raw_html, strip_literal_tags};
-use crate::string_patterns::*;
+use string_patterns::*;
+use crate::string_utils::*;
 use crate::stats::*;
 use base64::{Engine as _, engine::general_purpose};
 use reqwest::{Client, Error};
@@ -298,7 +299,7 @@ pub fn build_page_content_data(uri: &str, html_raw: &str, mode: ShowMode, strip_
   }
 
   if let Some(tg) = target {
-    let (header_target, content_target) = tg.extract_head_pair("/");
+    let (header_target, content_target) = tg.to_head_tail("/");
     let has_header_target = header_target.len() > 1;
     
     best_text = extract_best_html(&content_target, &html_obj);

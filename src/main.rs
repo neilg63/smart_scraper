@@ -1,7 +1,6 @@
-extern crate regex;
 extern crate redis;
 
-mod string_patterns;
+mod string_utils;
 mod cache;
 mod stats;
 mod page_data;
