@@ -1568,9 +1568,9 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "string-patterns"
-version = "0.1.2"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66adb45a7e769701cd0076366990d5eb915f83ff1a82d9524f128c5525986a21"
+checksum = "39207a83ab61b410f49ee3dba4d2b82d98be32967346d105ecea455ae03c813c"
 dependencies = [
  "regex",
 ]

@@ -1,6 +1,5 @@
 extern crate redis;
 
-mod string_utils;
 mod cache;
 mod stats;
 mod page_data;
@@ -8,6 +7,7 @@ mod routes;
 mod params;
 mod cleantext;
 mod browsergrab;
+// mod string_utils;
 
 use axum::Router;
 use std::net::SocketAddr;

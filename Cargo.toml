@@ -23,4 +23,4 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"]}
 futures = "0.3.29"
 dotenv = "0.15.0"
 serde_with = "3.4.0"
-string-patterns = "0.1.2"
+string-patterns = "0.1.5"

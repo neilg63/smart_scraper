@@ -6,7 +6,6 @@ use serde_with::skip_serializing_none;
 use crate::cache::{FlatPage, redis_get_page, redis_set_page};
 use crate::cleantext::{clean_raw_html, strip_literal_tags};
 use string_patterns::*;
-use crate::string_utils::*;
 use crate::stats::*;
 use base64::{Engine as _, engine::general_purpose};
 use reqwest::{Client, Error};

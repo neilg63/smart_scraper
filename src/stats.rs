@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use select::predicate::{Attr, Name, Predicate};
 use select::node::Node;
 use string_patterns::*;
-use crate::string_utils::*;
 
 const MIN_MEANINFUL_TEXT_LENGTH: usize = 128;
 const MIN_MEANINFUL_TEXT_RATIO: f64 = 0.02;

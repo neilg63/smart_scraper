@@ -50,11 +50,11 @@ impl NumericSeparatorSet {
     (self.group(), self.decimal())
   }
 } */
-
+/* 
 pub trait PatternMatchMany {
   fn pattern_match_many(&self, patterns: &[&str], case_insensitive: bool) -> bool;
-  fn pattern_match_many_insensitive(&self, patterns: &[&str]) -> bool;
-  fn pattern_match_many_sensitive(&self, patterns: &[&str]) -> bool;
+  fn pattern_match_many_ci(&self, patterns: &[&str]) -> bool;
+  fn pattern_match_many_cs(&self, patterns: &[&str]) -> bool;
   fn pattern_match_many_mixed(&self, pattern_sets: &[(&str, bool)]) -> bool;
   ///
   /// string matches all conditional patterns which may be positive / negative and case insensitive or not
@@ -76,11 +76,11 @@ impl PatternMatchMany for String {
     }
     num_matched == num_patterns
   }
-  fn pattern_match_many_insensitive(&self, patterns: &[&str]) -> bool {
+  fn pattern_match_many_ci(&self, patterns: &[&str]) -> bool {
     self.pattern_match_many(patterns, true)
   }
 
-  fn pattern_match_many_sensitive(&self, patterns: &[&str]) -> bool {
+  fn pattern_match_many_cs(&self, patterns: &[&str]) -> bool {
     self.pattern_match_many(patterns, false)
   }
 
@@ -147,11 +147,11 @@ impl PatternMatchMany for Vec<String> {
     num_matched == num_patterns
   }
 
-  fn pattern_match_many_insensitive(&self, patterns: &[&str]) -> bool {
+  fn pattern_match_many_ci(&self, patterns: &[&str]) -> bool {
     self.pattern_match_many(patterns, true)
   }
 
-  fn pattern_match_many_sensitive(&self, patterns: &[&str]) -> bool {
+  fn pattern_match_many_cs(&self, patterns: &[&str]) -> bool {
     self.pattern_match_many(patterns, false)
   }
 
@@ -201,9 +201,9 @@ impl PatternMatchMany for Vec<String> {
     }
     return_strings
   }
-}
+} */
 
-mod tests {
+/* mod tests {
   use super::*;
 
   
@@ -229,5 +229,5 @@ mod tests {
     assert_eq!(texts.pattern_replace_sets(&sets), target_texts);
   }
 
-}
+} */
 
