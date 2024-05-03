@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use select::predicate::{Attr, Name, Predicate};
 use select::node::Node;
 use string_patterns::*;
+use simple_string_patterns::*;
 
 const MIN_MEANINFUL_TEXT_LENGTH: usize = 128;
 const MIN_MEANINFUL_TEXT_RATIO: f64 = 0.02;
@@ -199,7 +200,7 @@ impl  PageElement {
             (r"\s+", " ")
         ];
 
-        let text_len = &item.text().pattern_replace_pairs(&repl_pairs).trim().len();
+        let text_len = &item.text().pattern_replace_pairs(&repl_pairs, false).trim().len();
         let tag_name: &str = item.name().unwrap_or("");
         PageElement { 
             depth,

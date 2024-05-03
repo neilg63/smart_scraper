@@ -1520,6 +1520,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "simple-string-patterns"
+version = "0.3.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21c2e51b6cc4625a709436a3b3822c04ecefef75c3f12ec9c0e400bd65caed92"
+
+[[package]]
 name = "siphasher"
 version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1568,9 +1574,9 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "string-patterns"
-version = "0.1.5"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39207a83ab61b410f49ee3dba4d2b82d98be32967346d105ecea455ae03c813c"
+checksum = "0dcde48cf7647c0d43431397bcbce9d1523e460b76335e824ae5bc0a0bf256a2"
 dependencies = [
  "regex",
 ]
@@ -1697,6 +1703,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
+ "simple-string-patterns",
  "string-patterns",
  "tokio",
  "tower-http",

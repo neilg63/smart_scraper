@@ -26,7 +26,7 @@ pub async fn page_data_response(params: extract::Query<QueryParams>) -> impl Int
         let show_elements = params.elements.unwrap_or(1) > 0;
         let target = params.target.clone();
         let show_mode = ShowMode::new(show_elements, true);
-        let page_data_response = fetch_page_data(&uri, show_mode, strip_extra, target, false).await;
+        let page_data_response = fetch_page_data(&uri, show_mode, strip_extra, target, false, false).await;
         response = json!(page_data_response)
     }
     (StatusCode::OK, Json(response))
@@ -47,14 +47,15 @@ pub async fn page_data_response_post(params: extract::Json<PostParams>) -> impl 
         
 
         let show_mode = ShowMode::new(show_elements, show_links);
-        let mut page_data_response = fetch_page_data(&uri, show_mode, strip_extra, target, show_raw).await;
+        let skip_cache = params.skip.unwrap_or(false);
+        let mut page_data_response = fetch_page_data(&uri, show_mode, strip_extra, target, show_raw, skip_cache).await;
         if fetch_related {
             let show_mode = ShowMode::new(false, false);
             let mut counter: usize = 0;
             for dl in page_data_response.domain_links() {
                 if counter < RELATED_SCAN_LIMIT {
                   let new_uri = concat_full_uri(&dl, &base_uri);
-                  let result_set = fetch_page_data(&new_uri, show_mode, strip_extra, None, false).await;
+                  let result_set = fetch_page_data(&new_uri, show_mode, strip_extra, None, false, false).await;
                   page_data_response.add_related(result_set);
                   counter += 1;
                 }
@@ -76,7 +77,8 @@ pub async fn page_content_response_post(params: extract::Json<PostParams>) -> im
       
 
       let show_mode = ShowMode::new(false, show_links);
-      let page_data_response = fetch_page_data(&uri, show_mode, true, target, false).await;
+      let skip_cache = params.skip.unwrap_or(false);
+      let page_data_response = fetch_page_data(&uri, show_mode, true, target, false, skip_cache).await;
       
       response = json!(page_data_response);
   }

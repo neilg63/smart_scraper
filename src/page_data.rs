@@ -5,6 +5,7 @@ use html5ever::tree_builder::TreeSink;
 use serde_with::skip_serializing_none;
 use crate::cache::{FlatPage, redis_get_page, redis_set_page};
 use crate::cleantext::{clean_raw_html, strip_literal_tags};
+use simple_string_patterns::*;
 use string_patterns::*;
 use crate::stats::*;
 use base64::{Engine as _, engine::general_purpose};
@@ -46,7 +47,7 @@ pub fn extract_inner_text_length(elem: &ElementRef) -> usize {
       let txt = el.trim();
       let mut tl = txt.len();
       if tl < 16 {
-          tl = txt.to_owned().strip_non_chars().len();
+          tl = txt.to_owned().strip_non_alphanum().len();
       }
       tl
   }).collect::<Vec<usize>>();
@@ -84,9 +85,14 @@ pub async fn get_page(uri: &str) -> Result<FlatPage, Error> {
   }
 }
 
-pub async fn fetch_page(uri: &str) -> Option<FlatPage> {
+pub async fn fetch_page(uri: &str, skip_cache: bool) -> Option<FlatPage> {
   let key = to_page_key(uri);
-  if let Some(mut pd) = redis_get_page(&key, Duration::minutes(get_max_page_age_minutes())) {
+  let age_mins = if skip_cache {
+    1
+  } else {
+    get_max_page_age_minutes()
+  };
+  if let Some(mut pd) = redis_get_page(&key, Duration::minutes(age_mins)) {
       pd.set_cached();
       Some(pd)
   } else {
@@ -346,9 +352,9 @@ pub fn build_page_content_data(uri: &str, html_raw: &str, mode: ShowMode, strip_
   PageResultSet::new(overview, Some(pi), raw)
 }
 
-pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, target: Option<String>, show_raw: bool) -> PageResultSet {
+pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, target: Option<String>, show_raw: bool, skip_cache: bool) -> PageResultSet {
   //let mut node_items: Vec<PageElement> = vec![];
-  if let Some(pd) = fetch_page(uri).await {
+  if let Some(pd) = fetch_page(uri, skip_cache).await {
     build_page_content_data(uri, &pd.content, mode, strip_extra, target, show_raw, pd.cached)
   } else {
     PageResultSet::empty()
@@ -357,9 +363,9 @@ pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, targe
 
 fn is_javascript_link(title: &str, uri: &str) -> bool {
     let patterns = [r"\{", r"\}"];
-    let title_suspect = title.to_owned().pattern_match_many(&patterns, true);
+    let title_suspect = title.to_owned().pattern_match_all(&patterns, true);
     if !title_suspect {
-        uri.to_owned().pattern_match_many(&patterns, true)
+        uri.to_owned().pattern_match_all(&patterns, true)
     } else {
         title_suspect
     }
@@ -368,7 +374,7 @@ fn is_javascript_link(title: &str, uri: &str) -> bool {
 pub async fn fetch_page_links(uri: &str) -> Vec<LinkItem> {
     let mut links: Vec<LinkItem> = Vec::new();
     //let mut node_items: Vec<PageElement> = vec![];
-    if let Some(pd) = fetch_page(uri).await {
+    if let Some(pd) = fetch_page(uri, false).await {
         let html_raw = pd.content;
         let html = clean_raw_html(&html_raw);
         let base_uri = extract_base_uri(uri);

@@ -21,6 +21,7 @@ pub struct PostParams {
   pub raw: Option<bool>,
   pub related: Option<bool>,
   pub keep_media: Option<bool>,
+  pub skip: Option<bool>
 }
 
 #[skip_serializing_none]

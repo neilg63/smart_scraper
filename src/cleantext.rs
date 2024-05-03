@@ -12,7 +12,7 @@ pub fn clean_raw_html(html: &str) -> String {
         (r#"\s+data(-\w+)+(\s+|>)"#, "$1"), // remove data-prefixed attributes that may be used client-side effects */
         // (r#">\s*class=[a-z0-9_-]+[^\w]*?<"#, "><"),
     ];
-    html.to_owned().pattern_replace_pairs(&repl_pairs)
+    html.to_owned().pattern_replace_pairs(&repl_pairs, true)
 }
 
 pub fn strip_literal_tags(text: &str) -> String {
