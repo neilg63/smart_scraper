@@ -8,6 +8,7 @@ mod params;
 mod cleantext;
 mod browsergrab;
 mod is_truthy;
+mod expand_path;
 
 use axum::Router;
 use std::net::SocketAddr;

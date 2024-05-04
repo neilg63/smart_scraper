@@ -5,6 +5,7 @@ use html5ever::tree_builder::TreeSink;
 use serde_with::skip_serializing_none;
 use crate::cache::{FlatPage, redis_get_page, redis_set_page};
 use crate::cleantext::{clean_raw_html, strip_literal_tags};
+use crate::expand_path::expand_css_path;
 use simple_string_patterns::*;
 use string_patterns::*;
 use crate::stats::*;
@@ -498,7 +499,7 @@ pub fn build_page_content_items(uri: &str, html_raw: &str, targets: &[String], i
   if has_targets {
     for target in targets {
       let txt = extract_best_html(&target, &html_obj);
-      snippets.push(Snippet::new(&txt, &target));
+      snippets.push(Snippet::new(&txt, &expand_css_path(&target)));
     }
   }
 
@@ -519,7 +520,7 @@ pub fn build_page_content_items(uri: &str, html_raw: &str, targets: &[String], i
         None
       };
       for path in item.paths {
-        let txts = extract_html_as_vec(&path, &html_obj);
+        let txts = extract_html_as_vec(&expand_css_path(&path), &html_obj);
           if txts.len() > 0 {
             if let Some(re) = re_opt.clone() {
               let plain_txts = txts.iter().map(|txt| strip_rgx.replace_all(txt, "").to_string()).collect::<Vec<String>>();
