@@ -14,7 +14,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 use axum::{
     http::{header, HeaderValue},
-    routing::{get, post},
+    routing::{get, post}
 };
 use tower_http::{
     limit::RequestBodyLimitLayer,
@@ -45,6 +45,7 @@ fn get_port_number() -> u16 {
     }
 }
 
+
 #[tokio::main]
 async fn main() {
     let max_timeout_secs = get_max_timeout_secs();
@@ -52,6 +53,7 @@ async fn main() {
         // `GET /` goes to `root`
         .route("/page-stats", get(page_data_response).post(page_data_response_post))
         .route("/get-page", post(page_content_response_post))
+        .route("/get-content-items", post(fetch_page_content_items))
         .route("/get-links", post(page_links_response_post))
         .route("/get-page-from-browser", post(fetch_page_content_from_browser))
         .route("/from-browser", post(fetch_page_from_browser))

@@ -8,6 +8,7 @@ use crate::cleantext::{clean_raw_html, strip_literal_tags};
 use simple_string_patterns::*;
 use string_patterns::*;
 use crate::stats::*;
+use crate::params::{TargetConfig,TargetKind};
 use base64::{Engine as _, engine::general_purpose};
 use reqwest::{Client, Error};
 use select::document::Document;
@@ -58,14 +59,22 @@ pub fn extract_inner_text_length(elem: &ElementRef) -> usize {
   inner_text_len
 }
 
-pub fn extract_best_html(selector_str: &str, html_obj: &Html) -> String {
-  let mut best_text = "".to_string();
-  let sel = Selector::parse(selector_str);
-  if let Ok(selector) = sel {
-      let inner = html_obj.select(&selector).into_iter().map(|el| el.html()).collect::<Vec<_>>();
-      best_text = inner.join("\n");
+pub fn extract_html_as_vec(selector_str: &str, html_obj: &Html) -> Vec<String> {
+    let mut elements: Vec<String> = vec![];
+    let sel = Selector::parse(selector_str);
+    if let Ok(selector) = sel {
+        elements = html_obj.select(&selector).into_iter().map(|el| el.html()).collect::<Vec<_>>();
+    }
+    elements
   }
-  best_text
+
+pub fn extract_best_html(selector_str: &str, html_obj: &Html) -> String {
+  let inner = extract_html_as_vec(selector_str, html_obj);
+  if inner.len() > 0 {
+    inner.join("\n")
+  } else {
+    "".to_string()
+  }
 }
 
 pub fn to_page_key(uri: &str) -> String {
@@ -150,6 +159,84 @@ impl PageResultSet {
 
     pub fn add_related(&mut self, result_set: PageResultSet) {
         self.related.push(result_set);
+    }
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Clone)]
+pub struct Snippet {
+  pub text: Option<String>,
+  pub key: Option<String>,
+  pub kind: Option<TargetKind>,
+  pub path: String,
+  #[serde(skip_serializing_if = "Vec::is_empty")]
+  pub matches: Vec<String>,
+}
+
+impl Snippet {
+    pub fn new(source_text: &str, path: &str) -> Self {
+        let text = if source_text.len() > 0 {
+            Some(source_text.to_string())
+        } else {
+            None
+        };
+        Snippet {
+            text,
+            key: None,
+            kind: None,
+            path: path.to_string(),
+            matches: vec![]
+        }
+    }
+
+    pub fn new_item(source_texts: &[String], path: &str, key_str: &str, multiple: bool, kind: Option<TargetKind>) -> Self {
+        let text = if !multiple && source_texts.len() > 0 {
+            source_texts.get(0).map(|txt| txt.to_owned())
+        } else {
+            None
+        };
+        let matches = if multiple {
+            source_texts.to_vec()
+        } else {
+            vec![]
+        };
+        let key = if key_str.len() > 0 {
+            Some(key_str.to_string())
+        } else {
+            None
+        };
+        Snippet {
+            text,
+            key,
+            kind,
+            path: path.to_string(),
+            matches
+        }
+    }
+
+    pub fn has_content(&self) -> bool {
+        self.text.is_some() || self.matches.len() > 0
+    }
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Serialize, Clone)]
+pub struct ContentResultSet {
+    pub stats: Option<PageOverviewResult>,
+    contents: Vec<Snippet>,
+    cached: bool,
+    valid: bool
+}
+
+impl ContentResultSet {
+    pub fn new(stats: Option<PageOverviewResult>, snippets: Vec<Snippet>, cached: bool) -> Self {
+        let valid = snippets.iter().any(|sn| sn.has_content());
+        ContentResultSet {
+            stats,
+            contents: snippets,
+            cached,
+            valid
+        }
     }
 }
 
@@ -267,6 +354,7 @@ fn strip_extra_tags(html_obj: &mut Html) {
   }
 }
 
+// Build a PageInfo object with the best matched HTML text
 pub fn build_page_content_data(uri: &str, html_raw: &str, mode: ShowMode, strip_extra: bool, target: Option<String>, show_raw: bool, cached: bool) -> PageResultSet {
   let has_target = target.is_some();
   let show_elements = mode.show_elements();
@@ -350,6 +438,103 @@ pub fn build_page_content_data(uri: &str, html_raw: &str, mode: ShowMode, strip_
       None
   };
   PageResultSet::new(overview, Some(pi), raw)
+}
+
+// Build content results with multiple targets
+pub fn build_page_content_items(uri: &str, html_raw: &str, targets: &[String], items: &[TargetConfig], cached: bool) -> ContentResultSet {
+  let num_targets = targets.len();
+  let num_items = items.len();
+  let has_targets = num_targets > 0;
+  let has_items = num_items > 0;
+
+  let html = clean_raw_html(html_raw);
+  let source_len = html_raw.len();
+  let mut html_obj = Html::parse_fragment(html.as_str());
+  let mut stripped_len: usize = 0;
+  let mut stripped_html = "".to_string();
+  
+  
+  let mut snippets: Vec<Snippet> = Vec::with_capacity(num_targets + num_items);
+
+  
+  if let Ok(sel) = Selector::parse("script,style,link,noscript") {
+    let ids = html_obj.select(&sel).into_iter().map(|el| el.id()).collect::<Vec<_>>();
+    for id in ids {
+      html_obj.remove_from_parent(&id);
+    }
+    stripped_html = html_obj.html();
+    stripped_len = stripped_html.len();
+  }
+
+  if has_targets {
+    for target in targets {
+      let txt = extract_best_html(&target, &html_obj);
+      snippets.push(Snippet::new(&txt, &target));
+    }
+  }
+
+  if has_items {
+    let strip_rgx = build_regex(r#"</?\w+[^>].*?>"#, true).unwrap();
+    for item in items.to_vec() {
+      let key_str = item.key.unwrap_or("".to_string());
+      let multiple = item.multiple.unwrap_or(false);
+      let kind = item.kind;
+      let plain = item.plain.unwrap_or(false);
+      let re_opt = if let Some(pat) = item.pattern {
+        if let Ok(rgx) = build_regex(&pat, true) {
+          Some(rgx)
+        } else {
+          None
+        }
+      } else {
+        None
+      };
+      for path in item.paths {
+        let txts = extract_html_as_vec(&path, &html_obj);
+          if txts.len() > 0 {
+            if let Some(re) = re_opt.clone() {
+              let plain_txts = txts.iter().map(|txt| strip_rgx.replace_all(txt, "").to_string()).collect::<Vec<String>>();
+              let mut filtered_txts = vec![];
+              let mut index: usize = 0;
+              for p_txt in plain_txts  {
+                if re.is_match(&p_txt) {
+                  let txt_opt = if plain {
+                    Some(p_txt)
+                  } else {
+                    txts.get(index).map(|txt| txt.to_owned())
+                  };
+                  if let Some(txt) = txt_opt {
+                    filtered_txts.push(txt);
+                  }
+                }
+                index += 1;
+              }
+              if filtered_txts.len() > 0 {
+                snippets.push(Snippet::new_item(&filtered_txts, &path, &key_str, multiple, kind));
+              }
+            } else {
+              snippets.push(Snippet::new_item(&txts, &path, &key_str, multiple, kind));
+            }
+          }
+        }
+    }
+  }
+  
+
+  let p_stats = if stripped_html.len() > 0 {
+      let doc = Document::from(stripped_html.as_str());
+      let ps = PageStats::new(&doc, &uri, false);
+      Some(ps)
+  } else {
+      None
+  };
+  
+  let overview = if let Some(ps) = p_stats.clone() {
+      Some(ps.to_result(false))
+  } else {
+      None
+  };
+  ContentResultSet::new(overview, snippets, cached)
 }
 
 pub async fn fetch_page_data(uri: &str, mode: ShowMode, strip_extra: bool, target: Option<String>, show_raw: bool, skip_cache: bool) -> PageResultSet {

@@ -129,3 +129,24 @@ pub async fn fetch_page_content_from_browser(params: extract::Json<PostParams>) 
   }
   (StatusCode::OK, Json(response))
 }
+
+pub async fn fetch_page_content_items(params: extract::Json<PostParams>) -> impl IntoResponse {
+  let mut response = json!({
+      "valid": false,
+  });
+  if let Some(uri) = params.uri.clone() {
+      let targets = params.targets.clone().unwrap_or(vec![]);
+      let items = params.items.clone().unwrap_or(vec![]);
+      let skip_cache = params.skip.unwrap_or(false);
+      let mut raw_html = "".to_string();
+      let mut cached = false;
+      if let Some(pd) = fetch_page(&uri, skip_cache).await {
+        raw_html = pd.content;
+        cached = pd.cached;
+      }
+      let page_data_response = build_page_content_items(&uri, &raw_html, &targets, &items, cached);
+      
+      response = json!(page_data_response);
+  }
+  (StatusCode::OK, Json(response))
+}

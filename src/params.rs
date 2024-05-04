@@ -17,7 +17,8 @@ pub struct PostParams {
   pub elements: Option<bool>,
   pub links: Option<bool>,
   pub target: Option<String>,
-  pub targets: Option<Vec<TargetConfig>>,
+  pub targets: Option<Vec<String>>,
+  pub items: Option<Vec<TargetConfig>>,
   pub raw: Option<bool>,
   pub related: Option<bool>,
   pub keep_media: Option<bool>,
@@ -27,27 +28,37 @@ pub struct PostParams {
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TargetConfig {
-  pub kind: TargetKind,
+  pub kind: Option<TargetKind>,
   pub paths: Vec<String>,
-  pub mode: TargetMode,
+  pub key: Option<String>,
   pub multiple: Option<bool>,
+  pub pattern: Option<String>,
+  pub plain: Option<bool>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone)]
 pub enum TargetKind {
+  #[serde(rename = "main_text")]
   MainText,
+  #[serde(rename = "summaries")]
   Summaries,
+  #[serde(rename = "domain_links")]
   DomainLinks,
+  #[serde(rename = "external_links")]
   ExternalLinks,
+  #[serde(rename = "all_links")]
   AllLinks,
+  #[serde(rename = "info")]
+  Info,
+  #[serde(rename = "data")]
   Data
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+/* #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum TargetMode {
   FirstMatch,
   MatchToMinMax,
   MatchAll,
   MatchOne,
-}
+} */
 
