@@ -51,7 +51,13 @@ pub enum TargetKind {
   #[serde(rename = "info")]
   Info,
   #[serde(rename = "data")]
-  Data
+  Data,
+  #[serde(rename = "float")]
+  Float,
+  #[serde(rename = "int")]
+  Integer,
+  #[serde(rename = "bool")]
+  Boolean
 }
 
 /* #[derive(Debug, Serialize, Deserialize, Clone)]

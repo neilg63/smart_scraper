@@ -13,6 +13,9 @@ use base64::{Engine as _, engine::general_purpose};
 use reqwest::{Client, Error};
 use select::document::Document;
 use serde::{Deserialize, Serialize};
+use serde_json::{json,Value};
+use simple_string_patterns::*;
+use crate::is_truthy::*;
 
 
 const MAX_PAGE_AGE_MINS_DEFAUTLT: i64 = 1440;
@@ -165,23 +168,23 @@ impl PageResultSet {
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Clone)]
 pub struct Snippet {
-  pub text: Option<String>,
+  pub content: Option<Value>,
   pub key: Option<String>,
   pub kind: Option<TargetKind>,
   pub path: String,
   #[serde(skip_serializing_if = "Vec::is_empty")]
-  pub matches: Vec<String>,
+  pub matches: Vec<Value>,
 }
 
 impl Snippet {
     pub fn new(source_text: &str, path: &str) -> Self {
-        let text = if source_text.len() > 0 {
-            Some(source_text.to_string())
+        let content = if source_text.len() > 0 {
+            Some(json!(source_text.to_string()))
         } else {
             None
         };
         Snippet {
-            text,
+            content,
             key: None,
             kind: None,
             path: path.to_string(),
@@ -190,32 +193,58 @@ impl Snippet {
     }
 
     pub fn new_item(source_texts: &[String], path: &str, key_str: &str, multiple: bool, kind: Option<TargetKind>) -> Self {
-        let text = if !multiple && source_texts.len() > 0 {
-            source_texts.get(0).map(|txt| txt.to_owned())
+        
+        let data_type = if let Some(tk) = kind {
+          match tk {
+            TargetKind::Boolean => 1,
+            TargetKind::Integer => 2,
+            TargetKind::Float => 3,
+            _ => 0
+          }
         } else {
-            None
+          0
         };
+        let matched_items =  source_texts.to_vec()
+          .into_iter().map(|t| match data_type {
+              1 => json!(t.is_truthy()),
+              2 => if let Some(n) = t.to_first_number::<i64>() {
+                json!(n)
+              } else {
+                json!(t)
+              },
+              3 => if let Some(n) = t.to_first_number::<f64>() {
+                json!(n)
+              } else {
+                json!(t)
+              },
+              _ => Value::String(t),
+          }).collect::<Vec<Value>>();
         let matches = if multiple {
-            source_texts.to_vec()
+          matched_items.clone()
         } else {
-            vec![]
+          vec![]
         };
         let key = if key_str.len() > 0 {
             Some(key_str.to_string())
         } else {
-            None
+          None
+        };
+        let content = if !multiple  {
+            matched_items.get(0).map(|v| v.to_owned())
+        } else {
+          None
         };
         Snippet {
-            text,
-            key,
-            kind,
-            path: path.to_string(),
-            matches
+          content,
+          key,
+          kind,
+          path: path.to_string(),
+          matches
         }
     }
 
     pub fn has_content(&self) -> bool {
-        self.text.is_some() || self.matches.len() > 0
+      self.content.is_some() || self.matches.len() > 0
     }
 }
 
@@ -474,7 +503,7 @@ pub fn build_page_content_items(uri: &str, html_raw: &str, targets: &[String], i
   }
 
   if has_items {
-    let strip_rgx = build_regex(r#"</?\w+[^>].*?>"#, true).unwrap();
+    let strip_rgx = build_regex(r#"</?\w+[^>]*?>"#, true).unwrap();
     for item in items.to_vec() {
       let key_str = item.key.unwrap_or("".to_string());
       let multiple = item.multiple.unwrap_or(false);

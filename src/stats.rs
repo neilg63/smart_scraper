@@ -262,11 +262,17 @@ pub struct PageStats {
     uri: String,
     #[serde(rename="textLen")]
     pub text_len: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub lang: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub image: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub elements: Vec<PageElement>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(rename="domainLinks")]
     pub domain_links: Vec<String>,
     #[serde(rename="numLinks")]
@@ -282,7 +288,9 @@ pub struct PageOverview {
     #[serde(rename = "textLen")]
     pub text_len: usize,
     pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub image: Option<String>,
     #[serde(rename="numLinks")]
     pub num_links: usize,
