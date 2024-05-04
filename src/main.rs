@@ -60,7 +60,7 @@ async fn main() {
         .layer(CorsLayer::permissive())
         .layer(TimeoutLayer::new(Duration::from_secs(max_timeout_secs)))
         // don't allow request bodies larger than 1024 bytes, returning 413 status code
-        .layer(RequestBodyLimitLayer::new(1024))
+        .layer(RequestBodyLimitLayer::new(8192))
         .layer(TraceLayer::new_for_http())
         .layer(SetResponseHeaderLayer::if_not_present(
             header::SERVER,
