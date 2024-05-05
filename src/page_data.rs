@@ -478,7 +478,6 @@ pub fn build_page_content_items(uri: &str, html_raw: &str, targets: &[String], i
   let has_items = num_items > 0;
 
   let html = clean_raw_html(html_raw);
-  let source_len = html_raw.len();
   let mut html_obj = Html::parse_fragment(html.as_str());
   let mut stripped_len: usize = 0;
   let mut stripped_html = "".to_string();
@@ -520,7 +519,12 @@ pub fn build_page_content_items(uri: &str, html_raw: &str, targets: &[String], i
       } else {
         None
       };
-      for css_path in item.paths {
+      let paths = if let Some(p) = item.path {
+        vec![p]
+      } else {
+        item.paths.unwrap_or(vec![])
+      };
+      for css_path in paths {
         let path = expand_css_path(&css_path);
         let txts = extract_html_as_vec(&path, &html_obj);
           if txts.len() > 0 {

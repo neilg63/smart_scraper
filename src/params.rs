@@ -29,11 +29,13 @@ pub struct PostParams {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TargetConfig {
   pub kind: Option<TargetKind>,
-  pub paths: Vec<String>,
+  pub path: Option<String>,
+  pub paths: Option<Vec<String>>,
   pub key: Option<String>,
   pub multiple: Option<bool>,
   pub pattern: Option<String>,
   pub plain: Option<bool>,
+  pub numeric: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
