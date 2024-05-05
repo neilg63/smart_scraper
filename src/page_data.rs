@@ -498,8 +498,9 @@ pub fn build_page_content_items(uri: &str, html_raw: &str, targets: &[String], i
 
   if has_targets {
     for target in targets {
-      let txt = extract_best_html(&target, &html_obj);
-      snippets.push(Snippet::new(&txt, &expand_css_path(&target)));
+      let path = expand_css_path(&target);
+      let txt = extract_best_html(&path, &html_obj);
+      snippets.push(Snippet::new(&txt, &path));
     }
   }
 
@@ -519,8 +520,9 @@ pub fn build_page_content_items(uri: &str, html_raw: &str, targets: &[String], i
       } else {
         None
       };
-      for path in item.paths {
-        let txts = extract_html_as_vec(&expand_css_path(&path), &html_obj);
+      for css_path in item.paths {
+        let path = expand_css_path(&css_path);
+        let txts = extract_html_as_vec(&path, &html_obj);
           if txts.len() > 0 {
             if let Some(re) = re_opt.clone() {
               let plain_txts = txts.iter().map(|txt| strip_rgx.replace_all(txt, "").to_string()).collect::<Vec<String>>();
